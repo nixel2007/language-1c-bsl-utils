@@ -1,0 +1,20 @@
+{
+  "name": "language-1c-bsl-utils",
+  "version": "0.0.1",
+  "description": "Service utilities and helpers for language-1c-bsl packages for VS Code and Atom",
+  "main": "out/src/global.js",
+  "scripts": {
+    "prepublish": "tsc",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "1c",
+    "bsl",
+    "language-1c-bsl"
+  ],
+  "author": "Nikita Gryzlov <nixel2007@gmail.com>",
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "1.8.9"
+  }
+}
