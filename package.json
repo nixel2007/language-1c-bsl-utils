@@ -14,6 +14,14 @@
   ],
   "author": "Nikita Gryzlov <nixel2007@gmail.com>",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nixel2007/language-1c-bsl-utils"
+  },
+  "bugs": {
+    "url": "https://github.com/nixel2007/language-1c-bsl-utils/issues",
+    "email": "nixel2007@gmail.com"
+  },
   "devDependencies": {
     "typescript": "1.8.9"
   }
