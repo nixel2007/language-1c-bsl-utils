@@ -16,6 +16,7 @@ export class Global {
     keywords: any;
     toreplaced: any;
     methodForDescription: any = undefined;
+    hoverTrue: boolean = true;
     private cacheUpdates: boolean;
 
     getCacheLocal(filename: string, word: string, source, update: boolean = false, allToEnd: boolean = true, fromFirst: boolean = true) {
@@ -31,10 +32,10 @@ export class Global {
         let entries = parsesModule.getMethodsTable().find();
         let count = 0;
         let collection = this.cache.addCollection(filename);
-        this.updateReferenceCalls(collection, parsesModule.context.CallsPosition, "GlobalModuleText", filename);
+        this.updateReferenceCallsOld(collection, parsesModule.context.CallsPosition, "GlobalModuleText", filename);
         for (let y = 0; y < entries.length; ++y) {
             let item = entries[y];
-            this.updateReferenceCalls(collection, item._method.CallsPosition, item, filename);
+            this.updateReferenceCallsOld(collection, item._method.CallsPosition, item, filename);
         }
         return collection;
     }
@@ -99,14 +100,14 @@ export class Global {
                     this.postMessage("Обновляем кэш файла № " + i + " из " + filesLength, 2000);
                 }
                 if (parsesModule.context.CallsPosition.length > 0) {
-                    this.updateReferenceCalls(this.dbcalls, parsesModule.context.CallsPosition, "GlobalModuleText", fullpath);
+                    this.updateReferenceCalls(parsesModule.context.CallsPosition, "GlobalModuleText", fullpath);
                 }
                 parsesModule = null;
                 for (let y = 0; y < entries.length; ++y) {
                     let item = entries[y];
                     let method = { name: item.name, endline: item.endline, context: item.context, isproc: item.isproc }
                     if (item._method.CallsPosition.length > 0) {
-                        this.updateReferenceCalls(this.dbcalls, item._method.CallsPosition, method, fullpath);
+                        this.updateReferenceCalls(item._method.CallsPosition, method, fullpath);
                     }
                     let _method = { Params: item._method.Params, IsExport: item._method.IsExport };
                     let newItem: MethodValue = {
@@ -131,17 +132,20 @@ export class Global {
     }
 
     updateCache(): any {
-        console.log("update cache");
-        this.postMessage("Запущено заполнение кеша", 3000);
         let configuration = this.getConfiguration("language-1c-bsl");
         let basePath: string = String(this.getConfigurationKey(configuration, "rootPath"));
         let rootPath = this.getRootPath();
         if (rootPath) {
+            console.log("update cache");
+            this.postMessage("Запущено заполнение кеша", 3000);
             rootPath = path.join(rootPath, basePath);
+            if (this.cache.getCollection ("ValueTable")) {
+                this.cache.removeCollection("ValueTable") 
+            }
             this.db = this.cache.addCollection("ValueTable");
+            this.dbcalls = new Map();
             let searchPattern = basePath !== "" ? basePath.substr(2) + "/**" : "**/*.{bsl,os}";
             this.findFilesForCache(searchPattern, rootPath);
-            this.dbcalls = new Map();
         }
     };
 
@@ -161,8 +165,30 @@ export class Global {
         let parsesModule = new Parser().parse(source);
         let moduleStr = this.getModuleForPath(fullpath, rootPath);
         let entries = parsesModule.getMethodsTable().find();
+        for (let index = 0; index < this.cache.getCollection(filename).data.length; index++) {
+            let value = this.cache.getCollection(filename).data[index];
+            if (value.call.startsWith(".")) {
+                continue;
+            }
+            if (value.call.indexOf(".") === -1) {
+                continue;
+            }
+            let arrCalls = this.dbcalls.get(value.call);
+            if (arrCalls) {
+                for (var k = arrCalls.length-1; k >= 0; --k) {
+                    var it = arrCalls[k];
+                    if (it["filename"] === fullpath) {
+                        arrCalls.splice(k, 1);
+                    }
+                }
+            }
+        }
+        this.cache.removeCollection(filename);
+        this.getRefsLocal(filename, source);
+        this.updateReferenceCalls(parsesModule.context.CallsPosition, "GlobalModuleText", fullpath);
         for (let y = 0; y < entries.length; ++y) {
             let item = entries[y];
+            this.updateReferenceCalls(item._method.CallsPosition, item, fullpath);
             let _method = { Params: item._method.Params, IsExport: item._method.IsExport };
             let newItem = {
                 "name": String(item.name),
@@ -189,9 +215,12 @@ export class Global {
         return search;
     }
 
-    private updateReferenceCalls(collection: any, calls: Array<any>, method: any, file: string): any {
+    private updateReferenceCalls(calls: Array<any>, method: any, file: string): any {
         for (let index = 0; index < calls.length; index++) {
             let value = calls[index];
+            if (value.call.startsWith(".")) {
+                continue;
+            }
             if (value.call.indexOf(".") === -1) {
                 continue;
             }
@@ -201,6 +230,26 @@ export class Global {
                 arrCalls = this.dbcalls.get(value.call);
             }
             arrCalls.push({ filename: file, call: value.call, line: value.line, character: value.character, name: String(method.name) });
+        }
+    }
+    
+    private updateReferenceCallsOld(collection: any, calls: Array<any>, method: any, file: string): any {
+        for (let index = 0; index < calls.length; index++) {
+            let value = calls[index];
+            if (value.call.startsWith(".")) {
+                continue;
+            }
+            let newItem: MethodValue = {
+                "name": String(method.name),
+                "filename": file,
+                "isproc": Boolean(method.isproc),
+                "call": value.call,
+                "context": method.context,
+                "line": value.line,
+                "character": value.character,
+                "endline": method.endline
+            };
+            collection.insert(newItem);
         }
     }
 
