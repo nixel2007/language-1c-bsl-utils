@@ -1,6 +1,6 @@
 {
   "name": "language-1c-bsl-utils",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "Service utilities and helpers for language-1c-bsl packages for VS Code and Atom",
   "main": "out/src/global.js",
   "scripts": {
